@@ -21,7 +21,7 @@ import torch
 import torch.nn.functional as F
 from dgl.data.tu import TUDataset
 from scipy.sparse import linalg
-
+from pathlib import Path
 
 def batcher():
     def batcher_dev(batch):
@@ -106,6 +106,52 @@ class Edgelist(object):
         y = torch.zeros(num_nodes, len(label2id))
         y[nodes, labels] = 1
         return torch.LongTensor(edge_list).t(), y, node2id
+
+
+class BrainFCGraph(object):
+    def __init__(self, root, threshold=0.3):
+        brain_fc_data = np.load(os.path.join(root, 'data_503.npy'))
+        self.graphs = []
+        self.num_labels = 2
+        self.graph_labels = np.load(os.path.join(root, 'gender_label.npy'))
+        for g in brain_fc_data:
+            edges = np.argwhere(g > threshold).T
+            u = np.concatenate([edges[1], edges[0]])
+            v = np.concatenate([edges[0], edges[1]])
+            self.graphs.append(dgl.DGLGraph((u, v)))
+
+    def get(self, idx):
+        return self.graphs[idx]
+
+        
+
+class BrainSubFCGraph(object):
+    def __init__(self, root, threshold=0.3):
+        brain_fc_data = np.load(os.path.join(root, 'sub_network.npy'), allow_pickle=True)
+        self.graphs = []
+        self.num_labels = 2
+        self.graph_labels = np.load(os.path.join(root, 'gender_label.npy'))
+
+        index = []
+
+        for i, g in enumerate(brain_fc_data):
+ 
+            for name, s in g.items():
+                edges = np.argwhere(np.abs(s) > threshold).T
+                print('edges', edges.shape)
+
+                if edges.shape[1] == 0:
+                    continue
+                u = np.concatenate([edges[1], edges[0]])
+                v = np.concatenate([edges[0], edges[1]])
+                self.graphs.append(dgl.DGLGraph((u, v)))
+                index.append((i,name))
+            # index.append(sample)
+        np.save(os.path.join(root, 'index_subnetwork.npy'), index, allow_pickle=True)
+
+
+    def get(self, idx):
+        return self.graphs[idx]
 
 
 class SSSingleDataset(object):

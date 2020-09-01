@@ -308,6 +308,37 @@ class NodeClassificationDataset(GraphDataset):
         graph.readonly()
         return graph
 
+class BrainGraphClassificationDataset(NodeClassificationDataset):
+    def __init__(
+        self,
+        dataset,
+        threshold,
+        rw_hops=64,
+        subgraph_size=64,
+        restart_prob=0.8,
+        positional_embedding_size=32,
+        step_dist=[1.0, 0.0, 0.0],
+        
+    ):
+        self.rw_hops = rw_hops
+        self.subgraph_size = subgraph_size
+        self.restart_prob = restart_prob
+        self.positional_embedding_size = positional_embedding_size
+        self.step_dist = step_dist
+        self.entire_graph = True
+        assert positional_embedding_size > 1
+
+        self.graphs = data_util.BrainSubFCGraph('data/brainfc', threshold).graphs
+
+        self.length = len(self.graphs)
+        self.total = self.length
+
+    def _convert_idx(self, idx):
+        graph_idx = idx
+        node_idx = self.graphs[idx].out_degrees().argmax().item()
+        return graph_idx, node_idx
+
+
 
 class GraphClassificationDataset(NodeClassificationDataset):
     def __init__(

@@ -24,6 +24,7 @@ from gcc.datasets import (
     NodeClassificationDataset,
     NodeClassificationDatasetLabeled,
     worker_init_fn,
+    BrainGraphClassificationDataset
 )
 from gcc.datasets.data_util import batcher
 from gcc.models import GraphEncoder
@@ -71,22 +72,14 @@ def main(args_test):
     args.gpu = args_test.gpu
     args.device = torch.device("cpu") if args.gpu is None else torch.device(args.gpu)
 
-    if args_test.dataset in GRAPH_CLASSIFICATION_DSETS:
-        train_dataset = GraphClassificationDataset(
-            dataset=args_test.dataset,
+
+
+    train_dataset = BrainGraphClassificationDataset(dataset=args_test.dataset,
             rw_hops=args.rw_hops,
             subgraph_size=args.subgraph_size,
             restart_prob=args.restart_prob,
-            positional_embedding_size=args.positional_embedding_size,
-        )
-    else:
-        train_dataset = NodeClassificationDataset(
-            dataset=args_test.dataset,
-            rw_hops=args.rw_hops,
-            subgraph_size=args.subgraph_size,
-            restart_prob=args.restart_prob,
-            positional_embedding_size=args.positional_embedding_size,
-        )
+            positional_embedding_size=args.positional_embedding_size, threshold=args_test.threshold)
+
     args.batch_size = len(train_dataset)
     train_loader = torch.utils.data.DataLoader(
         dataset=train_dataset,
@@ -122,14 +115,14 @@ def main(args_test):
     del checkpoint
 
     emb = test_moco(train_loader, model, args)
-    np.save(os.path.join(args.model_folder, args_test.dataset), emb.numpy())
-
-
+    np.save(os.path.join(args.model_folder, f'sub_{args_test.dataset}_{args_test.threshold}'), emb.numpy())
+ 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("argument for training")
     # fmt: off
     parser.add_argument("--load-path", type=str, help="path to load model")
-    parser.add_argument("--dataset", type=str, default="dgl", choices=["dgl", "wikipedia", "blogcatalog", "usa_airport", "brazil_airport", "europe_airport", "cora", "citeseer", "pubmed", "kdd", "icdm", "sigir", "cikm", "sigmod", "icde", "h-index-rand-1", "h-index-top-1", "h-index"] + GRAPH_CLASSIFICATION_DSETS)
+    parser.add_argument("--dataset", type=str, default="dgl", choices=["brainfc","dgl", "wikipedia", "blogcatalog", "usa_airport", "brazil_airport", "europe_airport", "cora", "citeseer", "pubmed", "kdd", "icdm", "sigir", "cikm", "sigmod", "icde", "h-index-rand-1", "h-index-top-1", "h-index"] + GRAPH_CLASSIFICATION_DSETS)
     parser.add_argument("--gpu", default=None, type=int, help="GPU id to use.")
+    parser.add_argument("--threshold", type=float, help="threshold")
     # fmt: on
     main(parser.parse_args())
